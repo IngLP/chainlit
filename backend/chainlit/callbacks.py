@@ -382,3 +382,34 @@ def data_layer(
     # 2. We don't want to change the API for get_data_layer() to be async, everywhere (at this point).
     config.code.data_layer = func
     return func
+
+@trace
+def on_feedback_update(func: Callable) -> Callable:
+    """
+    Hook to react to the user updating a feedback.
+
+    Args:
+        func (Callable[[], Any]): The feedback hook to execute.
+
+    Returns:
+        Callable[[], Any]: The decorated feedback hook.
+    """
+
+    config.code.on_feedback_update = wrap_user_function(func)
+    return func
+
+
+@trace
+def on_feedback_delete(func: Callable) -> Callable:
+    """
+    Hook to react to the user deleting a feedback.
+
+    Args:
+        func (Callable[[], Any]): The feedback hook to execute.
+
+    Returns:
+        Callable[[], Any]: The decorated feedback hook.
+    """
+
+    config.code.on_feedback_delete = wrap_user_function(func)
+    return func

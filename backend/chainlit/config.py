@@ -35,6 +35,7 @@ if TYPE_CHECKING:
     from chainlit.action import Action
     from chainlit.message import Message
     from chainlit.types import ChatProfile, InputAudioChunk, Starter, ThreadDict
+    from chainlit.types import Feedback
     from chainlit.user import User
 else:
     # Pydantic needs to resolve forward annotations. Because all of these are used
@@ -318,6 +319,9 @@ class CodeSettings:
         None
     )
     data_layer: Optional[Callable[[], BaseDataLayer]] = None
+
+    on_feedback_update: Optional[Callable[["Feedback"], Any]] = None
+    on_feedback_delete: Optional[Callable[[str], Any]] = None
 
 
 @dataclass()

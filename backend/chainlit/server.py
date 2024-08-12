@@ -797,7 +797,13 @@ async def update_feedback(
         raise HTTPException(status_code=500, detail="Data persistence is not enabled")
 
     try:
-        feedback_id = await data_layer.upsert_feedback(feedback=update.feedback)
+        feedback = update.feedback
+        feedback_id = await data_layer.upsert_feedback(feedback=feedback)
+        feedback.id = feedback_id
+
+        # Call the on_feedback_update callback if it's defined
+        if config.code.on_feedback_update:
+            await config.code.on_feedback_update(feedback)
     except Exception as e:
         raise HTTPException(detail=str(e), status_code=500) from e
 
@@ -820,6 +826,9 @@ async def delete_feedback(
     feedback_id = payload.feedbackId
 
     await data_layer.delete_feedback(feedback_id)
+    if config.code.on_feedback_delete:
+        await config.code.on_feedback_delete(feedback_id)
+
     return JSONResponse(content={"success": True})
 
 
