@@ -491,3 +491,17 @@ def on_shared_thread_view(
     """
     config.code.on_shared_thread_view = wrap_user_function(func)
     return func
+
+def on_feedback_delete(func: Callable) -> Callable:
+    """
+    Hook to react to the user deleting a feedback.
+
+    Args:
+        func (Callable[[], Any]): The feedback hook to execute.
+
+    Returns:
+        Callable[[], Any]: The decorated feedback hook.
+    """
+
+    config.code.on_feedback_delete = wrap_user_function(func)
+    return func
