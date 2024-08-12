@@ -22,6 +22,7 @@ from pydantic_settings import BaseSettings
 from starlette.datastructures import Headers
 
 from chainlit.data.base import BaseDataLayer
+from chainlit.types import Feedback
 from chainlit.logger import logger
 from chainlit.translations import lint_translation_json
 from chainlit.version import __version__
@@ -403,6 +404,9 @@ class CodeSettings(BaseModel):
     on_window_message: Optional[Callable[[str], Any]] = None
     author_rename: Optional[Callable[[str], Awaitable[str]]] = None
     data_layer: Optional[Callable[[], BaseDataLayer]] = None
+
+    on_feedback_update: Optional[Callable[[Feedback], Any]] = None
+    on_feedback_delete: Optional[Callable[[str], Any]] = None
 
 
 class ProjectSettings(BaseModel):

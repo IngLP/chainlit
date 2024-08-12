@@ -909,6 +909,9 @@ async def delete_feedback(
     feedback_id = payload.feedbackId
 
     await data_layer.delete_feedback(feedback_id)
+    if config.code.on_feedback_delete:
+        await config.code.on_feedback_delete(feedback_id)
+
     return JSONResponse(content={"success": True})
 
 

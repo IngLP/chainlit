@@ -84,6 +84,7 @@ from .callbacks import (
     send_window_message,
     set_chat_profiles,
     set_starters,
+    on_feedback_delete
 )
 
 if TYPE_CHECKING:
@@ -187,6 +188,7 @@ __all__ = [
     "on_chat_resume",
     "on_chat_start",
     "on_feedback",
+    "on_feedback_delete",
     "on_logout",
     "on_mcp_connect",
     "on_mcp_disconnect",
