@@ -80,6 +80,8 @@ from .callbacks import (
     send_window_message,
     set_chat_profiles,
     set_starters,
+    on_feedback_update,
+    on_feedback_delete
 )
 
 if TYPE_CHECKING:
