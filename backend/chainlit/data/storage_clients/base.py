@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Union
 
-EXPIRY_TIME = 3600
+EXPIRY_TIME = 60 * 60 * 24 * 7  # 7 days
 
 
 class BaseStorageClient(ABC):
