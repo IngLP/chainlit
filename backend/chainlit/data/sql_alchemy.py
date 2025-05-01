@@ -700,6 +700,24 @@ class SQLAlchemyDataLayer(BaseDataLayer):
                             value=step_feedback["feedback_value"],
                             comment=step_feedback.get("feedback_comment"),
                         )
+
+                    # Convert showInput from string ("true"/"false") to boolean if needed
+                    raw_show_input = step_feedback.get("step_showinput")
+                    show_input_value: Optional[Union[bool, str]] = raw_show_input
+                    is_input_visible = False
+                    if isinstance(raw_show_input, str):
+                        if raw_show_input.lower() == "true":
+                            show_input_value = True
+                            is_input_visible = True
+                        elif raw_show_input.lower() == "false":
+                            show_input_value = False
+                        else:
+                            # showInput is the input language, so it should be visible
+                            is_input_visible = True
+                    elif isinstance(raw_show_input, bool): # Handle potential boolean values if db schema changes
+                         is_input_visible = raw_show_input
+
+
                     step_dict = StepDict(
                         id=step_feedback["step_id"],
                         name=step_feedback["step_name"],
@@ -717,8 +735,7 @@ class SQLAlchemyDataLayer(BaseDataLayer):
                         tags=step_feedback.get("step_tags"),
                         input=(
                             step_feedback.get("step_input", "")
-                            if step_feedback.get("step_showinput")
-                            not in [None, "false"]
+                            if is_input_visible
                             else ""
                         ),
                         output=step_feedback.get("step_output", ""),
@@ -726,7 +743,7 @@ class SQLAlchemyDataLayer(BaseDataLayer):
                         start=step_feedback.get("step_start"),
                         end=step_feedback.get("step_end"),
                         generation=step_feedback.get("step_generation"),
-                        showInput=step_feedback.get("step_showinput"),
+                        showInput=show_input_value, # Assign the potentially converted value
                         language=step_feedback.get("step_language"),
                         feedback=feedback,
                     )
