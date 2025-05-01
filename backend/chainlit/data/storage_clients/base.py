@@ -2,7 +2,7 @@ import os
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Union
 
-storage_expiry_time = int(os.getenv("STORAGE_EXPIRY_TIME", 3600))
+storage_expiry_time = int(os.getenv("STORAGE_EXPIRY_TIME", 3600 * 24 * 7))
 
 
 class BaseStorageClient(ABC):

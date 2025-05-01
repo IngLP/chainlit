@@ -531,10 +531,14 @@ class SQLAlchemyDataLayer(BaseDataLayer):
                 "SQLAlchemy Error: create_element, Failed to persist data in storage_provider"
             )
 
-        element_dict: ElementDict = element.to_dict()
+        # --- Start Modification ---
+        # Directly update the element object's attributes *before* converting to dict
+        element.url = uploaded_file.get("url")
+        element.object_key = uploaded_file.get("object_key")
+        # --- End Modification ---
 
-        element_dict["url"] = uploaded_file.get("url")
-        element_dict["objectKey"] = uploaded_file.get("object_key")
+        # Now, to_dict will use the updated url and object_key
+        element_dict: ElementDict = element.to_dict()
 
         element_dict_cleaned = {k: v for k, v in element_dict.items() if v is not None}
         if "props" in element_dict_cleaned:
@@ -790,7 +794,20 @@ class SQLAlchemyDataLayer(BaseDataLayer):
                         forId=element.get("element_forid"),
                         mime=element.get("element_mime"),
                     )
-                    thread_dicts[thread_id]["elements"].append(element_dict)  # type: ignore
+
+                    # Regenerate URL using storage provider if objectKey exists
+                    object_key = element_dict.get("objectKey")
+                    if self.storage_provider and object_key:
+                        try:
+                            fresh_url = await self.storage_provider.get_read_url(object_key)
+                            element_dict["url"] = fresh_url # Update the URL
+                        except Exception as e:
+                            logger.error(
+                                f"Failed to get read URL for element {element_dict['id']} with key {object_key}: {e}",
+                                exc_info=True
+                            )
+
+                    thread_dicts[thread_id]["elements"].append(element_dict) # type: ignore
 
         return list(thread_dicts.values())
 
