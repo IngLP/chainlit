@@ -462,6 +462,7 @@ class SQLAlchemyDataLayer(BaseDataLayer):
         )
         if isinstance(element, list) and element:
             element_dict: Dict[str, Any] = element[0]
+            props_dict = element_dict.get("props", "{}")
             return ElementDict(
                 id=element_dict["id"],
                 threadId=element_dict.get("threadId"),
@@ -470,7 +471,7 @@ class SQLAlchemyDataLayer(BaseDataLayer):
                 url=element_dict.get("url"),
                 objectKey=element_dict.get("objectKey"),
                 name=element_dict["name"],
-                props=json.loads(element_dict.get("props", "{}")),
+                props=json.loads(props_dict) if props_dict else {},
                 display=element_dict["display"],
                 size=element_dict.get("size"),
                 language=element_dict.get("language"),
