@@ -497,46 +497,47 @@ class SQLAlchemyDataLayer(BaseDataLayer):
         if not element.for_id:
             return
 
-        content: Optional[Union[bytes, str]] = None
+        if not element.object_key: # Avoid re-uploading files that are already uploaded
+            content: Optional[Union[bytes, str]] = None
 
-        if element.path:
-            async with aiofiles.open(element.path, "rb") as f:
-                content = await f.read()
-        elif element.url:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(element.url) as response:
-                    if response.status == 200:
-                        content = await response.read()
-                    else:
-                        content = None
-        elif element.content:
-            content = element.content
-        else:
-            raise ValueError("Element url, path or content must be provided")
-        if content is None:
-            raise ValueError("Content is None, cannot upload file")
+            if element.path:
+                async with aiofiles.open(element.path, "rb") as f:
+                    content = await f.read()
+            elif element.url:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(element.url) as response:
+                        if response.status == 200:
+                            content = await response.read()
+                        else:
+                            content = None
+            elif element.content:
+                content = element.content
+            else:
+                raise ValueError("Element url, path or content must be provided")
+            if content is None:
+                raise ValueError("Content is None, cannot upload file")
 
-        user_id: str = await self._get_user_id_by_thread(element.thread_id) or "unknown"
-        file_object_key = f"{user_id}/{element.id}" + (
-            f"/{element.name}" if element.name else ""
-        )
-
-        if not element.mime:
-            element.mime = "application/octet-stream"
-
-        uploaded_file = await self.storage_provider.upload_file(
-            object_key=file_object_key, data=content, mime=element.mime, overwrite=True
-        )
-        if not uploaded_file:
-            raise ValueError(
-                "SQLAlchemy Error: create_element, Failed to persist data in storage_provider"
+            user_id: str = await self._get_user_id_by_thread(element.thread_id) or "unknown"
+            file_object_key = f"{user_id}/{element.id}" + (
+                f"/{element.name}" if element.name else ""
             )
 
-        # --- Start Modification ---
-        # Directly update the element object's attributes *before* converting to dict
-        element.url = uploaded_file.get("url")
-        element.object_key = uploaded_file.get("object_key")
-        # --- End Modification ---
+            if not element.mime:
+                element.mime = "application/octet-stream"
+
+            uploaded_file = await self.storage_provider.upload_file(
+                object_key=file_object_key, data=content, mime=element.mime, overwrite=True
+            )
+            if not uploaded_file:
+                raise ValueError(
+                    "SQLAlchemy Error: create_element, Failed to persist data in storage_provider"
+                )
+
+            # --- Start Modification ---
+            # Directly update the element object's attributes *before* converting to dict
+            element.url = uploaded_file.get("url")
+            element.object_key = uploaded_file.get("object_key")
+            # --- End Modification ---
 
         # Now, to_dict will use the updated url and object_key
         element_dict: ElementDict = element.to_dict()
