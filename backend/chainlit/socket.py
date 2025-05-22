@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 from typing import Any, Dict, Literal, Optional, Tuple, TypedDict, Union
 from urllib.parse import unquote
 
@@ -225,6 +226,7 @@ async def clean_session(sid):
 
 @sio.on("disconnect")  # pyright: ignore [reportOptionalCall]
 async def disconnect(sid):
+    logger.info(f"Disconnecting session {sid}")
     session = WebsocketSession.get(sid)
 
     if not session:
@@ -239,9 +241,11 @@ async def disconnect(sid):
         await persist_user_session(session.thread_id, session.to_persistable())
 
     async def clear(_sid):
+        logger.info(f"Clearing session {_sid}")
         if session := WebsocketSession.get(_sid):
             # Clean up the user session
             if session.id in user_sessions:
+                logger.info(f"Removing user session {session.id}")
                 user_sessions.pop(session.id)
             # Clean up the session
             await session.delete()
@@ -251,6 +255,7 @@ async def disconnect(sid):
     else:
 
         async def clear_on_timeout(_sid):
+            logging.info(f"Scheduled clearing session {_sid} after timeout {config.project.session_timeout}")
             await asyncio.sleep(config.project.session_timeout)
             await clear(_sid)
 
