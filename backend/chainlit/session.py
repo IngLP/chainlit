@@ -37,6 +37,7 @@ def clean_metadata(metadata: Dict, max_size: int = 1048576):
 
     metadata_size = len(json.dumps(cleaned_metadata).encode("utf-8"))
     if metadata_size > max_size:
+        logger.warning("⛔️ Metadata size exceeds the limit!! Redacting metadata.")
         # Redact the metadata if it exceeds the maximum size
         cleaned_metadata = {
             "message": f"Metadata size exceeds the limit of {max_size} bytes. Redacted."
