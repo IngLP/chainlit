@@ -8,6 +8,7 @@ from contextlib import AsyncExitStack
 from typing import TYPE_CHECKING, Any, Callable, Deque, Dict, Literal, Optional, Union
 
 import aiofiles
+from pydantic import BaseModel
 
 from chainlit.logger import logger
 from chainlit.types import AskFileSpec, FileReference
@@ -24,6 +25,12 @@ ClientType = Literal["webapp", "copilot", "teams", "slack", "discord"]
 
 class JSONEncoderIgnoreNonSerializable(json.JSONEncoder):
     def default(self, o):
+        if isinstance(o, BaseModel):
+            try:
+                return o.model_dump()
+            except AttributeError:
+                # Fallback for Pydantic v1
+                return o.dict()
         try:
             return super().default(o)
         except TypeError:
