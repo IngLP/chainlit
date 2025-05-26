@@ -535,8 +535,9 @@ class SQLAlchemyDataLayer(BaseDataLayer):
 
             # --- Start Modification ---
             # Directly update the element object's attributes *before* converting to dict
-            element.url = uploaded_file.get("url")
-            element.object_key = uploaded_file.get("object_key")
+            object_key = uploaded_file.get("object_key")
+            element.object_key = object_key
+            element.url = await self.storage_provider.get_read_url(object_key)
             # --- End Modification ---
 
         # Now, to_dict will use the updated url and object_key
