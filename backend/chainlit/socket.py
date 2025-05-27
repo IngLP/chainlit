@@ -207,7 +207,19 @@ async def connection_successful(sid):
                 if "message" in step["type"]:
                     chat_context.add(Message.from_dict(step))
 
-            await context.emitter.resume_thread(thread)
+            # Prepare metadata specifically for the frontend
+            original_metadata = thread.get("metadata", {}) or {}
+            metadata_for_frontend = {}
+            if "chat_profile" in original_metadata:
+                metadata_for_frontend["chat_profile"] = original_metadata["chat_profile"]
+            if "chat_settings" in original_metadata:
+                metadata_for_frontend["chat_settings"] = original_metadata["chat_settings"]
+
+            # Create a copy of the thread to send to the frontend with pruned metadata
+            thread_for_frontend = thread.copy()
+            thread_for_frontend["metadata"] = metadata_for_frontend
+
+            await context.emitter.resume_thread(thread_for_frontend)
             return
         else:
             await context.emitter.send_resume_thread_error("Thread not found.")
