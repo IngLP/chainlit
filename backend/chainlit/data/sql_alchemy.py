@@ -518,9 +518,8 @@ class SQLAlchemyDataLayer(BaseDataLayer):
                 raise ValueError("Content is None, cannot upload file")
 
             user_id: str = await self._get_user_id_by_thread(element.thread_id) or "unknown"
-            file_object_key = f"{user_id}/{element.id}" + (
-                f"/{element.name}" if element.name else ""
-            )
+            assert element.name
+            file_object_key = f"{user_id}/{element.thread_id}/{element.name}"
 
             if not element.mime:
                 element.mime = "application/octet-stream"
