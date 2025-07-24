@@ -174,7 +174,7 @@
             "button": "Nuova Chat",
             "dialog": {
                 "title": "Crea Nuova Chat",
-                "description": "Questo cancellerà la cronologia della chat corrente. Sei sicuro di voler continuare?",
+                "description": "Eventuali messaggi non inviati saranno scartati. Sei sicuro di voler continuare?",
                 "tooltip": "Nuova Chat"
             }
         },
