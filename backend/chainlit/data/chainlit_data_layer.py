@@ -1,7 +1,7 @@
 import json
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 import aiofiles
 import asyncpg  # type: ignore
@@ -176,9 +176,9 @@ class ChainlitDataLayer(BaseDataLayer):
                     }
                 )
 
-        # Handle file uploads only if storage_client is configured
-        path = None
-        if self.storage_client:
+        object_key = element.object_key
+
+        if self.storage_client and not object_key:
             content: Optional[Union[bytes, str]] = None
 
             if element.path:
@@ -191,9 +191,9 @@ class ChainlitDataLayer(BaseDataLayer):
 
             if content is not None:
                 if element.thread_id:
-                    path = f"threads/{element.thread_id}/files/{element.id}"
+                    object_key = f"threads/{element.thread_id}/files/{element.id}"
                 else:
-                    path = f"files/{element.id}"
+                    object_key = f"files/{element.id}"
 
                 content_disposition = (
                     f'attachment; filename="{element.name}"'
@@ -203,21 +203,31 @@ class ChainlitDataLayer(BaseDataLayer):
                     )
                     else None
                 )
-                await self.storage_client.upload_file(
-                    object_key=path,
+                upload_result = await self.storage_client.upload_file(
+                    object_key=object_key,
                     data=content,
                     mime=element.mime or "application/octet-stream",
                     overwrite=True,
                     content_disposition=content_disposition,
                 )
+                if not upload_result:
+                    raise ValueError(
+                        "ChainlitDataLayer Error: create_element failed to persist file"
+                    )
 
-        else:
-            # Log warning only if element has file content that needs uploading
-            if element.path or element.url or element.content:
-                logger.warning(
-                    "Data Layer: No storage client configured. "
-                    "File will not be uploaded."
-                )
+                element.object_key = object_key
+                read_url = upload_result.get("url")
+                if not read_url:
+                    read_url = await self.storage_client.get_read_url(object_key)
+                element.url = read_url
+
+        elif not self.storage_client and (element.path or element.content):
+            logger.warning(
+                "Data Layer: No storage client configured. File will not be uploaded."
+            )
+
+        if self.storage_client and element.object_key and not element.url:
+            element.url = await self.storage_client.get_read_url(element.object_key)
 
         # Always persist element metadata to database
         query = """
@@ -245,7 +255,7 @@ class ChainlitDataLayer(BaseDataLayer):
             ),
             "mime": element.mime,
             "name": element.name,
-            "object_key": path,
+            "object_key": element.object_key,
             "url": element.url,
             "chainlit_key": element.chainlit_key,
             "display": element.display,
@@ -273,6 +283,8 @@ class ChainlitDataLayer(BaseDataLayer):
         row = results[0]
         metadata = json.loads(row.get("metadata", "{}"))
 
+        props_str = row.get("props") or "{}"
+
         return ElementDict(
             id=str(row["id"]),
             threadId=str(row["threadId"]),
@@ -289,7 +301,7 @@ class ChainlitDataLayer(BaseDataLayer):
             page=row["page"],
             autoPlay=row.get("autoPlay"),
             playerConfig=row.get("playerConfig"),
-            props=json.loads(row.get("props", "{}")),
+            props=json.loads(props_str),
         )
 
     @queue_until_user_message()
@@ -539,9 +551,19 @@ class ChainlitDataLayer(BaseDataLayer):
 
         if self.storage_client is not None:
             for elem in elements_results:
-                if not elem["url"] and elem["objectKey"]:
+                object_key_value = elem.get("objectKey")
+                if not object_key_value:
+                    continue
+                try:
                     elem["url"] = await self.storage_client.get_read_url(
-                        object_key=elem["objectKey"],
+                        object_key=object_key_value,
+                    )
+                except Exception as exc:
+                    logger.error(
+                        "Failed to refresh read URL for element %s: %s",
+                        elem.get("id"),
+                        exc,
+                        exc_info=True,
                     )
 
         return ThreadDict(
@@ -620,19 +642,41 @@ class ChainlitDataLayer(BaseDataLayer):
             )
         return None
 
+    def _normalize_show_input(
+        self, raw_value: Optional[Union[bool, str]]
+    ) -> Tuple[Optional[Union[bool, str]], bool]:
+        if isinstance(raw_value, str):
+            lowered = raw_value.lower()
+            if lowered == "true":
+                return True, True
+            if lowered == "false":
+                return False, False
+            return raw_value, True
+        if isinstance(raw_value, bool):
+            return raw_value, raw_value
+        return raw_value, bool(raw_value)
+
     def _convert_step_row_to_dict(self, row: Dict) -> StepDict:
+        raw_show_input = row.get("showInput")
+        show_input_value, is_input_visible = self._normalize_show_input(raw_show_input)
+        input_value = row.get("input")
+        if input_value is None:
+            input_value = ""
+        if not is_input_visible:
+            input_value = ""
+
         return StepDict(
             id=str(row["id"]),
             threadId=str(row["threadId"]) if row.get("threadId") else "",
             parentId=str(row["parentId"]) if row.get("parentId") else None,
             name=str(row.get("name")),
             type=row["type"],
-            input=row.get("input", {}),
+            input=input_value,
             output=row.get("output", {}),
             metadata=json.loads(row.get("metadata", "{}")),
             createdAt=row["createdAt"].isoformat() if row.get("createdAt") else None,
             start=row["startTime"].isoformat() if row.get("startTime") else None,
-            showInput=row.get("showInput"),
+            showInput=show_input_value,
             isError=row.get("isError"),
             end=row["endTime"].isoformat() if row.get("endTime") else None,
             feedback=self._extract_feedback_dict_from_step_row(row),
@@ -640,6 +684,7 @@ class ChainlitDataLayer(BaseDataLayer):
 
     def _convert_element_row_to_dict(self, row: Dict) -> ElementDict:
         metadata = json.loads(row.get("metadata", "{}"))
+        props_str = row.get("props") or "{}"
         return ElementDict(
             id=str(row["id"]),
             threadId=str(row["threadId"]) if row.get("threadId") else None,
@@ -656,7 +701,7 @@ class ChainlitDataLayer(BaseDataLayer):
             page=row["page"],
             autoPlay=row.get("autoPlay"),
             playerConfig=row.get("playerConfig"),
-            props=json.loads(row.get("props") or "{}"),
+            props=json.loads(props_str),
         )
 
     async def build_debug_url(self) -> str:
