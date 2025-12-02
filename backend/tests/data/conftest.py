@@ -13,6 +13,7 @@ def mock_storage_client():
         "url": "https://example.com/test.txt",
         "object_key": "test_user/test_element/test.txt",
     }
+    mock_client.get_read_url.return_value = "https://example.com/test.txt"
     return mock_client
 
 
