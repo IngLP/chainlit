@@ -132,7 +132,7 @@ async def connect(sid: str, environ: WSGIEnvironment, auth: WebSocketSessionAuth
             logger.exception("Exception authenticating connection: %s", e)
 
         if not user:
-            logger.error("Authentication failed in websocket connect.")
+            logger.info("Authentication failed in websocket connect.")
             raise ConnectionRefusedError("authentication failed")
 
         if thread_id:
@@ -268,7 +268,7 @@ async def disconnect(sid):
     else:
 
         async def clear_on_timeout(_sid):
-            logging.info(f"Scheduled clearing session {_sid} after timeout {config.project.session_timeout}")
+            logger.info("Scheduled clearing session {_sid} after timeout {config.project.session_timeout}")
             await asyncio.sleep(config.project.session_timeout)
             await clear(_sid)
 

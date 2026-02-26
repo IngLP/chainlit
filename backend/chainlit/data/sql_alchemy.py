@@ -611,6 +611,7 @@ class SQLAlchemyDataLayer(BaseDataLayer):
             # --- Start Modification ---
             # Directly update the element object's attributes *before* converting to dict
             object_key = uploaded_file.get("object_key")
+            assert isinstance(object_key, str)
             element.object_key = object_key
             element.url = await self.storage_provider.get_read_url(object_key)
             # --- End Modification ---
