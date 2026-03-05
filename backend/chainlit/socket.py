@@ -129,7 +129,7 @@ async def connect(sid: str, environ: WSGIEnvironment, auth: WebSocketSessionAuth
         try:
             user, token = await _authenticate_connection(environ)
         except Exception as e:
-            logger.exception("Exception authenticating connection: %s", e)
+            logger.warning("Exception authenticating connection: %s", e)
 
         if not user:
             logger.info("Authentication failed in websocket connect.")
